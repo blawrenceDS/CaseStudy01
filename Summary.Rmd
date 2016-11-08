@@ -1,0 +1,143 @@
+---
+title: "Case Study 01 Write Up"
+author: "Brandon Lawrence"
+date: "November 6, 2016"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Introduction
+This case involved exploring the relationship between GDP and Income Group as defined by the World Bank.
+
+Source Code and Analysis can be found in the GitHub Repository at the following link:
+
+<https://github.com/blawrenceDS/CaseStudy01>
+
+Data Sources:
+
+<http://data.worldbank.org/data-catalog/GDP-ranking-table>
+
+<http://data.worldbank.org/data-catalog/ed-stats>
+
+## Methods
+
+
+
+```{r Merge_GDP_EDU, echo = FALSE,warning=FALSE,message = FALSE}
+library(data.table)
+library(plyr)
+library(dplyr)
+
+
+rawGDPdata <- fread('https://d396qusza40orc.cloudfront.net/getdata%2Fdata%2FGDP.csv', nrows = 195)
+  
+GDPdata <- rawGDPdata[-c(1,2,3,4)]
+GDPdata <- GDPdata[-c(191:326)]
+colnames(GDPdata) <- c("CountryCode","GDP_Rank","B1","CountryName","GDP_Nom","B2","B3","B4","B5","B6")
+
+tidyGDPdata <- subset(GDPdata, select = c("CountryCode","GDP_Rank","CountryName","GDP_Nom"))
+
+tidyGDPdata$GDP_Nom <- as.numeric(gsub(",","",tidyGDPdata$GDP_Nom))
+tidyGDPdata$GDP_Rank <- as.numeric(tidyGDPdata$GDP_Rank)
+
+rawEDUdata <- fread('https://d396qusza40orc.cloudfront.net/getdata%2Fdata%2FEDSTATS_Country.csv')
+
+tidyEDUdata <- subset(rawEDUdata, select = c("CountryCode","Income Group"))
+GDP_EDU_data <- merge(x = tidyEDUdata, y = tidyGDPdata, by = "CountryCode")
+```
+
+  The analysis began by downloading the required datasets from the World Bank database. The data was then cleaned for formatting and to distill the germane information. Then the datasets were merged together to create a table that listed country by GDP rank, GDP nominal amount, and income group.
+
+## Results
+
+After merging, we found that 190 of the shortcode IDs between datasets matched in the Merge process.
+
+We wanted to observe which country had the 13th lowest GDP in the study.
+
+```{r , echo=TRUE}
+
+#Choose the ranking (lowest = 1) for which you would like to find the country
+rank <- 13
+
+#Sort the GDP ranks appropriately
+DataSortbyGDP <- arrange(GDP_EDU_data,desc(as.numeric(GDP_Rank)))
+
+#Extracts country name from data frame
+Country_GDP_Rank <- as.vector(DataSortbyGDP[[rank,4]])
+
+#Output country name to console
+Country_GDP_Rank
+```
+
+The average GDP ranking of high income OECD countries was 33 and 92 was the average ranking for high income non OECD countries. 
+
+```{r , echo=TRUE}
+#Find the average ranking of each income group
+
+
+Income_Group_Avg_Ranks <- setNames(aggregate(GDP_EDU_data$GDP_Rank, 
+                                             by = list(GDP_EDU_data$`Income Group`),
+                                             mean),c("Income Group","Average Rank"))
+
+Income_Group_Avg_Ranks$`Average Rank` <- round(Income_Group_Avg_Ranks$`Average Rank`, 0)
+Income_Group_Avg_Ranks
+```
+
+
+
+In general, a higher income group portends a higher GDP, though the spread is quite large (note the log scale).
+
+```{r GDP Plot, echo=FALSE}
+library(ggplot2)
+
+log_GDP_EDU_data <- data.frame("GDP_Rank" = as.numeric(GDP_EDU_data$GDP_Rank),
+                               "Income_Group"= GDP_EDU_data$`Income Group`,
+                               "Country" = GDP_EDU_data$CountryName,
+                               "Log_GDP_Nom" = log(GDP_EDU_data$GDP_Nom))
+log_GDP_EDU_data <- arrange(log_GDP_EDU_data,desc(as.numeric(GDP_Rank)))
+
+xorder <- c("High income: OECD",
+            "High income: nonOECD",
+            "Upper middle income",
+            "Lower middle income",
+            "Low income")
+
+ggplot(data = log_GDP_EDU_data, aes(x = log_GDP_EDU_data$Income_Group, 
+                                    y = log_GDP_EDU_data$Log_GDP_Nom))+
+  
+  geom_point(stat = "identity", 
+           aes(color = log_GDP_EDU_data$Income_Group))+
+  ggtitle("GDP and Income Group")+
+  labs(x = "Income Group",
+    y = "GDP (log scale)")+
+  guides(color=guide_legend("Income Group"))+
+  theme(axis.title.x=element_blank(),
+        axis.text.x=element_blank(),
+        axis.ticks.x=element_blank())+
+  scale_x_discrete(limits=xorder)
+```
+
+5 countries are lower middle income, but in the top 38 by GDP.
+```{r, echo=FALSE}
+
+library(plyr)
+
+GDP_Rank_Table <- within(GDP_EDU_data, 
+                   quantile <- as.integer(cut(GDP_EDU_data$GDP_Rank, 
+                                             quantile(GDP_EDU_data$GDP_Rank, 
+                                                      probs=0:5/5), 
+                                             include.lowest=TRUE)))
+
+
+Income_Group_Quantile_Count <- data.frame ( table ( GDP_Rank_Table$`Income Group`, 
+                                                    GDP_Rank_Table$quantile ) [,] ) 
+
+Income_Group_Quantile_Count
+```
+
+##Conclusion
+
+   GDP is positively correlated with income, though notable exceptions exist, especially in countries such as Russia and Malaysia where GDP is boosted by natural resource extraction but may not result in higher income for the average citizen. China (#2) and India (#10) also stand out as lower income countries in the top ten GDP rankings, though population size is most likely the driving variable in both cases. The United States is far and away an outlier with a GDP that is double of #2 China. What is interesting as well is that of high income countries, only OECD countries break into the top 10 with the petro state Saudia Arabia (#19) being the first high income Non OECD country in the list.
