@@ -1,0 +1,13 @@
+
+rawEDUdata - Dataframe containing raw data concerning Income Groups by country from the World Bank database
+rawGDPdata - Dataframe containing raw data concerning GDP nominal amount and ranking by country from the World Bank database
+tidyEDUdata - Subset of rawEDUdata containing only valid Country Code and Income Group data
+tidyGDPdata - Subset of rawGDPdata containing only valid Country Code, Country Name, GDP Rank and GDP Nominal Amount data
+GDP_EDU_data - Merged dataset created from rawEDUdata and rawGDPdata joined by Country Code
+Income_Group_Avg_Ranks - Aggregated table from GDP_EDU_data that shows the average GDP rank for each Income Group
+log_GDP_EDU_data - Dataframe containing GDP Rank, Income Group, Country Name, and a log-transformed nominal GDP value for each countryy
+GDP_Rank_Table - GDP_EDU_data dataframe with calculated nominal GDP quantile column appended
+Income_Group_Quantile_Count <- Dataframe with transformed data from GDP_Rank_Table that shows the count of countries in each Income Group by quantile
+DataSortbyGDP - GDP_EDU_data table sorted by GDP Rank
+Country_GDP_Rank - Returns country that corresponds to user-defined GDP rank
+
